@@ -1,0 +1,67 @@
+---
+title: "hw5"
+author: "Nathan Hawkins"
+date: "2/16/2022"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+1. The survival package has a built in data set called "heart" with data on patients waiting for and receiving heart transplants.  For this problem we only want the data from after the transplant was received (we will use the full data set later), so create a new data frame with the subset using code like:
+
+heart2 <- heart[heart$transplant==1,]
+
+Now fit a Kaplan-Meier curve to the data ignoring truncation, i.e. use the `stop` variable as the time and `event` as the censoring indicator.
+
+Fit a second model that uses the `start` variable to indicate left truncation.  
+
+Plot both fits (using the `lines` function on a survfit object will add the lines to the existing plot) in the same plot and compare the survival curves.  Also compare the median survival times and the number of people at risk at time points 5 and 16.  How does this affect the survival estimates?
+
+```{r}
+library(asaur)
+library(survival)
+heart = survival::heart
+heart2 <- heart[heart$transplant==1,]
+kp_model = survfit(Surv(stop, event) ~ 1, data = heart2)
+
+kp_model2alt = survfit(Surv(start, stop, event) ~ 1, data = heart2)
+
+plot(kp_model, lwd = 2, conf.int = FALSE)
+lines(kp_model2alt, col = "blue", lwd = 2, conf.int = FALSE)
+text(1000, 0.5, "Standard Model", col = "black")
+text(500, 0.1, "Left-truncated Model", col = "blue")
+
+# The median is 285 in the standard model and 90 in the left-truncated model.
+kp_model 
+kp_model2alt
+
+# The number of people at risk at time 5 and 16 for the standard model are 69 and 69.
+# The number of people at risk at time 5 and 16 for the left-truncated model are 11 and 21.
+summary(kp_model)
+summary(kp_model2alt)
+
+# Having less people in the risk set probably gives a more accurate estimate because it doesn't account for people until they are actually at risk. This means their survival estimate is lower.
+
+```
+
+
+2.  Fit a Cox proportional Hazards model to the subset of the Heart data used above with a spline term for age, another spline term for year (when the patient was entered into the study) and surgery (whether the patient had a prior heart surgery).  Use the summary output as well as computing AIC values to find a simpler model that fits the data and makes sense, interpret and justify your final model.
+
+The model that has covariates age, surgery, and year has a slightly smaller AIC (296 < 298) but has fewer terms than the model with the splines. We will favor the simpler model that fits the data better.
+
+```{r}
+library(splines)
+
+
+
+model3 = coxph(Surv(start, stop, event) ~  surgery + pspline(age, df = 3) +
+                   pspline(heart2$year, df = 3),
+                 data = heart2)
+
+model3.1 = coxph(Surv(start, stop, event) ~  surgery + age + year,
+                 data = heart2)
+
+
+AIC(model3, model3.1)
+```
+

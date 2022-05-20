@@ -1,0 +1,77 @@
+---
+title: "hw4"
+author: "Nathan Hawkins"
+date: "2/9/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+The following problems will use the Ovarian Cancer data available on Learning Suite.
+
+1.  Create a complimentary log-log plot of the data comparing the 2 treatment groups.  Does it appear that the proportional hazards assumption holds?  What will the consequences be if we fit a Cox proportional hazards model to this data?
+
+The lines don't look exactly proportional. We may have trouble with the estimates as our estimates are linear but the data don't appear to be. Though this may be due to a small sample size.
+
+```{r}
+library(asaur)
+library(survival)
+ov = read.csv("ovarian.csv")
+head(ov)
+
+survfit(Surv(time, status)~treatment,
+        data=ov) |>
+  plot(fun='cloglog', col=c('blue','red'))
+```
+
+2. Create the same plot, but comparing patients up to age 56 to those over 56.  Does proportional hazards hold in this case?
+
+When using age over 56 as a variable, the hazards look more proportional than in the previous case.
+```{r}
+
+ov$age_cat = ifelse(ov$age > 56, 1, 0)
+survfit(Surv(time, status)~  age_cat,
+        data=ov) |>
+  plot(fun='cloglog', col=c('blue','red'))
+```
+
+
+3. Fit a Cox proportional hazards model to the Ovarian data using treatment and age as predictor variables.  What are the hazard ratios of each predictor?  Interpret the HRs in context including the confidence intervals.
+
+Being in the treatment group implies that the subject's hazard is 0.45 (or 45%) of the hazard of the non treatment. With 95% confidence the hazard is between (0.13, 1.56). A person 1 year older in age implies a hazard 1.15 times greater than the younger person. With 95% confidence this hazard is between 1.06 and 1.27. Treatment is not significant in this model, age is significant at the 0.05 level.
+```{r}
+
+fit1 <- coxph(Surv(time, status) ~ treatment + age,
+              data=ov)
+
+fit1
+exp(confint(fit1))
+summary(fit1)
+```
+
+
+
+4. Create a plot of the predicted survival curves (based on the ph model) for 2 56 year old patients, one in the treatment group, one in the control group.
+
+```{r}
+tmpdat <- data.frame(treatment=c(1, 2), age = c(56, 56))
+
+plot(survfit(fit1, tmpdat), col=c('blue','red'), main = "Survival curves of two patients") 
+```
+
+
+5. Create a plot of the predicted survival curves (based on the ph model) for 3 women in the control group, one each of the ages 50, 56, and 62.  Label the curves, or include a legend to identify which line is which.  Give a 1-2 sentence description of the comparison between the ages.
+
+```{r}
+tmpdat <- data.frame(treatment=c(1, 1, 1), age = c(50, 56, 62))
+
+plot(survfit(fit1, tmpdat), col=c('blue','red', 'green'),
+     main = "Survival curves of 3 patients", 
+     xlab = "Days", 
+     ylab = "Survival")
+text(800, 0.66, "62 y/o", col = "blue")
+text(800, 0.36, "56 y/o", col = "red")
+text(800, 0.1, "50 y/o", col = "green")
+```
+

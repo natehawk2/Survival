@@ -1,0 +1,54 @@
+---
+title: "hw3"
+author: "Nathan Hawkins"
+date: "1/31/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# 4.1
+In both cases the treatment and control are statistically significant with p-value = 0.005.
+```{r}
+library(asaur)
+library(survival)
+phs = asaur::pharmacoSmoking
+
+# Log Rank Test
+survdiff(Surv(ttr, relapse) ~ grp, rho = 0, data = phs)
+
+# Prentice Modification
+survdiff(Surv(ttr, relapse) ~ grp, rho = 1, data = phs)
+
+```
+
+
+# 4.2
+Stratifying on employment status we again get the the treatment and control groups are statistically significant.
+
+```{r}
+# Log Rank Test
+survdiff(Surv(ttr, relapse) ~ grp + strata(employment), rho = 0, data = phs)
+
+# Prentice Modification
+survdiff(Surv(ttr, relapse) ~ grp + strata(employment), rho = 1, data = phs)
+```
+
+# 4.3
+
+All the p-values for the tests are less than 0.05 so we conclude the survival times of the 2 groups are not equal.
+```{r}
+pan = asaur::pancreatic
+head(pan)
+library(lubridate)
+pan$death = as.Date(as.character(pan$death), format = "%m/%d/%Y")
+
+# Log Rank Test
+survdiff(Surv(as.numeric(death)) ~ stage, rho = 0, data = pan)
+
+# Prentice Modification
+survdiff(Surv(as.numeric(death)) ~ stage, rho = 1, data = pan)
+# Log rank test
+wilcox.test(as.numeric(death) ~ stage, data = pan)
+```
+

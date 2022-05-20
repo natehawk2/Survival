@@ -1,0 +1,115 @@
+---
+title: "hw 6"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+The Child Mortality dataset (under LS Content, or the 'child' data frame in the "eha" package for R) contains data on child mortality in Sweden during the 1800's.
+
+```{r}
+library(eha)
+library(survival)
+child = eha::child
+head(child)
+```
+
+
+1. Evaluate the data in the dataset to see how well it follows a Weibull distribution.  Give a 1-2 sentence explanation and description of plots or other diagnostics used.
+
+
+From the plots below we see that the child data looks like it follows a scaled weibull distribution. We used the optim function to find the MLE for the parameters of the distribution.
+```{r}
+logLikWeib2 <- function(par, tt, status) {
+  mu <- par[1]
+  sigma <- par[2]
+  lambda.p <- exp(-mu)
+  alpha.p <- 1/sigma
+  uncens <- sum(
+    dweibull(tt[status==1], alpha.p, 1/lambda.p, log=TRUE)
+  )
+  rcens <- sum(
+    pweibull(tt[status==0], alpha.p, 1/lambda.p, log=TRUE,
+             lower.tail = FALSE)
+  )
+  uncens + rcens
+}
+
+logLikWeib2(c(4,2), 10, 1)
+
+o2 <- optim(c(4,2), fn=logLikWeib2,
+            control=list(fnscale= -1),
+            tt = child$exit,
+            status = child$event
+)
+
+o2$par
+
+survreg(Surv(exit, event) ~ 1, 
+  data=child,
+  dist='weibull')
+
+plot(density(child$exit[child$event==1]),
+     type='l', ylim=c(0,0.3))
+curve(dweibull(x, 1/o2$par[2], exp(o2$par[1])),
+      add=TRUE, col='red')
+
+plot(survfit(Surv(exit,event)~1, data=child), main = "Data and Weibull")
+curve(pweibull(x, 1/o2$par[2], exp(o2$par[1]),
+               lower.tail = FALSE),
+      add=TRUE, col='red')
+```
+
+
+
+
+2. Fit a parametric regression model with the Weibull distribution to the data (use exit and event variables, do not worry about enter) with sex of the child, mothers age, and the social group (socBranch) as predictors.
+
+```{r}
+colnames(child)
+fit1 = survreg(Surv(exit,event) ~ sex + socBranch + m.age,
+             data=child, dist = "weibull")
+
+summary(fit1)
+```
+
+
+3. Further explore the fit in part 2 to see if a non-linear effect of age gives a better fit and if any interactions are important.
+
+
+A non-linear effect for age lowers the AIC and so we believe it improves the fit of the model. Adding in an interaction between sex and social branch does not improve the model fit so we leave it out.
+```{r}
+
+fit2 = survreg(Surv(exit,event) ~ sex + socBranch + pspline(m.age, df = 4),
+             data=child, dist = "weibull")
+
+summary(fit2)
+
+AIC(fit1)
+AIC(fit2)
+```
+
+
+4. Refit your model from part 3 using a distribution other than the Weibull.  Briefly describe how this fit compares to the previous one.
+
+We refit the model using a Gaussian distribution instead of the Weibull. This significantly increased AIC. However, fitting the data to a lognormal decreased AIC giving us the best fit of all the models yet. This holds true for BIC as well.
+```{r}
+fit3 = survreg(Surv(exit,event) ~ sex + socBranch + pspline(m.age, df = 4),
+             data=child, dist = "gaussian")
+
+fit4 = survreg(Surv(exit,event) ~ sex + socBranch + pspline(m.age, df = 4),
+             data=child, dist = "lognormal")
+
+
+AIC(fit1)
+AIC(fit2)
+AIC(fit3)
+AIC(fit4)
+
+# BIC
+BIC(fit1)
+BIC(fit2)
+BIC(fit3)
+BIC(fit4)
+```
+

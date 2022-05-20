@@ -1,0 +1,70 @@
+---
+title: "hw2"
+author: "Nathan Hawkins"
+date: "1/26/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# 1
+1. kphaz.fit from the muhaz package calculates Kaplan-Meier type hazard estimates.
+2. phreg from eha (event history analysis) package computes proportional hazards model with parametric baseline hazard(s). 
+3. bpcp2samp from bpcp tests for dissimilarity between two groups in their survival distributions at a fixed point in time.
+Can operationalize that dissimilarity as ’difference’, ’ratio’ or ’oddsratio’.
+
+# 2
+
+Q1 survival time is 17 weeks, with 95% confidence between 13 and 30
+Median survival time is 44.5 weeks, with 95% confidence between between 28 and 76
+Q3 survival time is infinity, with 95% confidence between 64 and infinity
+```{r}
+library(survival)
+library(asaur)
+gx = asaur::gastricXelox
+fit1 <- survfit(Surv(timeWeeks, delta) ~ 1, data=gx)
+plot(fit1, mark.time=TRUE)
+fit1
+summary(fit1)
+```
+
+
+# 3
+
+Median follow-up time is 120 weeks
+
+```{r}
+gx$delta1 = ifelse(gx$delta == 1, 0, 1)
+fit2 <- survfit(Surv(timeWeeks, delta1) ~ 1, data=gx)
+plot(fit2)
+fit2
+```
+
+# 4
+
+```{r}
+library(muhaz)
+fit3 <- survfit(Surv(time, status) ~ 1, data=aml)
+sfit3 <- summary(fit3)
+
+mfit3 <- muhaz(aml$time, aml$status, max.time = 45)
+
+haz3 <- sfit3$n.event/sfit3$n.risk
+plot(mfit3, col='blue', main = "Hazard", ylim = c(0,0.2), xlim = c(0,45))
+points(sfit3$time, haz3)
+
+mfit3 <- muhaz(aml$time, aml$status, max.time = 161)
+
+plot(fit3, cumhaz=TRUE, main = "Cumulative Hazard")
+lines(mfit3$est.grid, 
+      cumsum(mfit3$haz.est)*diff(mfit3$est.grid)[1],
+      col='blue')
+
+plot(fit3, main = "Survival Function")
+lines(mfit3$est.grid,
+      exp(-cumsum(mfit3$haz.est)*diff(mfit3$est.grid)[1]),
+      col='blue')
+```
+
+
+
